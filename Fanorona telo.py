@@ -182,41 +182,45 @@ class FanoronaTelo:
         meilleur_coup = None
         meilleur_score = float('-inf')
 
-        # Pour chaque pion de l'IA
-        for (row_initial, col_initial), joueur in self.positions.items():
-            if joueur == self.joueur_actuel:  # Si c'est un pion de l'IA
+        # 1. Vérifier les mouvements de placement si l’IA n’a pas placé toutes les piècesVérifier les mouvements réguliers si l’IA a placé toutes les pièces
+        if self.pions_places[self.joueur_actuel] < self.pions_max:
+            for row in range(3):
+                for col in range(3):
+                    if self.positions[(row, col)] is None:  # Case Vide
+                        positions_temp = self.positions.copy()
+                        positions_temp[(row, col)] = self.joueur_actuel
+                        score = evaluer_position(positions_temp)
+                        if score > meilleur_score:
+                            meilleur_score = score
+                            meilleur_coup = ((None, None), (row, col))  # Place deplacement
 
-                # Pour chaque case adjacente
-                for row_final in range(max(0, row_initial - 1), min(3, row_initial + 2)):
-                    for col_final in range(max(0, col_initial - 1), min(3, col_initial + 2)):
-                        if (row_final, col_final) != (row_initial, col_initial) and self.positions[(row_final, col_final)] is None:  # Si la case est libre et adjacente
-                            # Simule le coup
-                            positions_temp = self.positions.copy()
-                            positions_temp[(row_final, col_final)] = self.joueur_actuel
-                            positions_temp[(row_initial, col_initial)] = None
+        # 2. Vérifiez les mouvements réguliers si l’IA a placé toutes les pièces
+        else:
+            for (row_initial, col_initial), joueur in self.positions.items():
+                if joueur == self.joueur_actuel:
+                    for row_final in range(max(0, row_initial - 1), min(3, row_initial + 2)):
+                        for col_final in range(max(0, col_initial - 1), min(3, col_initial + 2)):
+                            if (row_final, col_final) != (row_initial, col_initial) and self.positions[(row_final, col_final)] is None:
+                                positions_temp = self.positions.copy()
+                                positions_temp[(row_final, col_final)] = self.joueur_actuel
+                                positions_temp[(row_initial, col_initial)] = None
+                                score = evaluer_position(positions_temp)
+                                if score > meilleur_score:
+                                    meilleur_score = score
+                                    meilleur_coup = ((row_initial, col_initial), (row_final, col_final))
 
-                            # Evalue le coup
-                            score = evaluer_position(positions_temp)
-
-                            # Met à jour le meilleur coup si nécessaire
-                            if score > meilleur_score:
-                                meilleur_score = score
-                                meilleur_coup = ((row_initial, col_initial), (row_final, col_final))
-
-        # Si un meilleur coup a été trouvé
+        # Exécuter le meilleur mouvement
         if meilleur_coup:
             (row_initial, col_initial), (row_final, col_final) = meilleur_coup
+            if row_initial is None:  # Place de deplacement
+                self.placer_pion(row_final, col_final)
+            else:  # Deplacement normal
+                self.positions[(row_final, col_final)] = self.joueur_actuel
+                self.positions[(row_initial, col_initial)] = None
+                self.canvas.delete("pions")
+                self.redessiner_pions()
+                self.changer_joueur()
 
-            # Effectue le déplacement
-            self.positions[(row_final, col_final)] = self.joueur_actuel
-            self.positions[(row_initial, col_initial)] = None
-
-            # Met à jour l'affichage
-            self.canvas.delete("pions")
-            self.redessiner_pions()
-            self.changer_joueur()
-
-            # Vérifie la victoire
             gagnant = verifier_victoire(self.positions)
             if gagnant:
                 self.fin_de_partie(gagnant)
